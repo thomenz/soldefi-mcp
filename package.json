@@ -1,7 +1,7 @@
 {
   "name": "soldefi-mcp",
   "mcpName": "io.github.thomenz/soldefi-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MCP server for Solana DeFi risk intelligence, paid automatically via x402 micropayments (USDC on Solana or Base). Tools: rug/honeypot scan of any SPL token (mint/freeze-authority, Token-2022 transfer tax, holder concentration, and a live Jupiter buy->sell round trip proving it's actually sellable), deep liquidity-pool analysis (real fee APR, wash-trade risk, executable slippage ladder) across Raydium/Orca/Meteora/pumpswap, and a wash-filtered risk-adjusted 'real best pools' ranking. For trading, sniper, LP, yield and MEV agents that need to vet a token or pool before acting.",
   "license": "MIT",
   "repository": {

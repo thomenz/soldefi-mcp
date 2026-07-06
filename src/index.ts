@@ -125,7 +125,7 @@ async function call(method: string, path: string, body?: unknown): Promise<ToolR
 }
 
 const server = new McpServer(
-  { name: "soldefi-mcp", version: "0.1.0" },
+  { name: "soldefi-mcp", version: "0.2.0" },
   {
     instructions:
       "Solana DeFi Intelligence exposes paid tools that vet Solana tokens and liquidity " +
@@ -143,9 +143,18 @@ const server = new McpServer(
       "3) `top_pools` — the REAL best Solana DEX pools: the same feed a free API returns, but " +
       "wash-traded/fake-volume pools are filtered out and the rest ranked by risk-adjusted fee " +
       "yield, with an `excluded` list showing exactly what was dropped and why.\n" +
-      "4) `validate_mint` — free base58 address-format check; use it to avoid paying on a " +
-      "malformed mint.\n" +
-      "For trading, sniper, LP, yield and MEV agents that can't trust raw on-chain volume numbers.",
+      "4) `check_lp_status` — liquidity durability / rug-pull exposure (pool depth+age, burned supply, " +
+      "mint/freeze authority) → DURABLE/SHAKY/FRAGILE/RUG-PRONE.\n" +
+      "5) `check_deployer` — deployer reputation: who launched the token, how much they still hold, wallet/token " +
+      "age → fresh-wallet / insider-dump risk.\n" +
+      "6) `can_i_sell` — live sellability at YOUR size: simulate exiting $X and report USDC recovered, sell impact " +
+      "and tax/friction.\n" +
+      "7) `scan_wallet_risk` — scan a wallet's holdings and flag the rug/honeypot positions to exit.\n" +
+      "8) `scan_honeypot_batch` — one call to scan up to 10 mints (watchlist / launch candidates).\n" +
+      "9) `validate_mint` — free base58 address-format check; use it to avoid paying on a malformed mint.\n" +
+      "These are PRE-TRADE vetting calls (some run live Jupiter simulations, so expect a few hundred ms to ~2s; " +
+      "cached calls are near-instant — see the X-Cache and Server-Timing headers). For trading, sniper, LP, yield " +
+      "and MEV agents that can't trust raw on-chain volume numbers.",
   },
 );
 
@@ -211,6 +220,78 @@ server.registerTool(
       ...(limit !== undefined ? { limit } : {}),
       ...(minTvlUsd !== undefined ? { minTvlUsd } : {}),
     }),
+);
+
+server.registerTool(
+  "check_lp_status",
+  {
+    title: "Solana token liquidity durability / rug-pull exposure",
+    description:
+      "Assess how durable a Solana token's liquidity is and whether a dev could pull it: pools (TVL, age, DEX), " +
+      "largest-pool depth, burned-supply share, and whether mint/freeze authority is still live. Returns a 0-100 " +
+      "liquidity-risk score + verdict (DURABLE/SHAKY/FRAGILE/RUG-PRONE). A durability signal, not a cryptographic " +
+      "LP time-lock proof. Paid ($0.02).",
+    inputSchema: MINT_ARG,
+  },
+  ({ mint }) => call("GET", `/v1/solana/lp-status/${encodeURIComponent(mint)}`),
+);
+
+server.registerTool(
+  "check_deployer",
+  {
+    title: "Solana token deployer reputation",
+    description:
+      "Trace who launched a Solana token: the mint's creator wallet, how much of the token the deployer still " +
+      "holds, the deployer wallet's age and the token's age. Returns a 0-100 risk score + verdict flagging fresh " +
+      "wallets, heavy insider self-holding and brand-new tokens. Paid ($0.03).",
+    inputSchema: MINT_ARG,
+  },
+  ({ mint }) => call("GET", `/v1/solana/deployer/${encodeURIComponent(mint)}`),
+);
+
+server.registerTool(
+  "can_i_sell",
+  {
+    title: "Real-time Solana sellability check at your size",
+    description:
+      "Simulate exiting a specific USD amount of a Solana token via a live Jupiter buy->sell round trip: whether " +
+      "you can actually sell, USDC recovered, real sell price impact and tax/friction loss. Answers 'can I get $X " +
+      "out right now, and at what cost?' — catches honeypots and thin books at your real trade size. Paid ($0.01).",
+    inputSchema: {
+      ...MINT_ARG,
+      usd: z.number().min(10).max(1_000_000).optional().describe("Trade size in USD to simulate exiting (default 1000)."),
+    },
+  },
+  ({ mint, usd }) =>
+    call("GET", `/v1/solana/can-i-sell/${encodeURIComponent(mint)}${usd !== undefined ? `?usd=${usd}` : ""}`),
+);
+
+server.registerTool(
+  "scan_wallet_risk",
+  {
+    title: "Portfolio rug scan for a Solana wallet",
+    description:
+      "Read a Solana wallet's SPL holdings and run the full honeypot/rug scan on each (up to 10 positions). Returns " +
+      "per-token risk plus a summary of how many holdings are critical/high/medium/low and which mints to exit. " +
+      "For portfolio-manager and risk agents auditing exposure. Paid ($0.05).",
+    inputSchema: { address: z.string().describe("Solana wallet address (base58) to scan for risky holdings.") },
+  },
+  ({ address }) => call("POST", "/v1/solana/wallet-risk", { address }),
+);
+
+server.registerTool(
+  "scan_honeypot_batch",
+  {
+    title: "Batch Solana rug/honeypot scan (up to 10 mints)",
+    description:
+      "Scan up to 10 Solana token mints in one paid call and get the full per-token honeypot verdict (0-100 risk " +
+      "score, flags, sellability) for each — cheaper than scanning individually. For vetting a watchlist or a set " +
+      "of launch candidates at once. Paid ($0.10).",
+    inputSchema: {
+      mints: z.array(z.string()).min(1).max(10).describe("1-10 Solana SPL token mints to scan."),
+    },
+  },
+  ({ mints }) => call("POST", "/v1/solana/honeypot-batch", { mints }),
 );
 
 server.registerTool(
