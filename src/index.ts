@@ -125,7 +125,7 @@ async function call(method: string, path: string, body?: unknown): Promise<ToolR
 }
 
 const server = new McpServer(
-  { name: "soldefi-mcp", version: "0.2.1" },
+  { name: "soldefi-mcp", version: "0.3.0" },
   {
     instructions:
       "Solana DeFi Intelligence exposes paid tools that vet Solana tokens and liquidity " +
@@ -149,9 +149,13 @@ const server = new McpServer(
       "age → fresh-wallet / insider-dump risk.\n" +
       "6) `can_i_sell` — live sellability at YOUR size: simulate exiting $X and report USDC recovered, sell impact " +
       "and tax/friction.\n" +
-      "7) `scan_wallet_risk` — scan a wallet's holdings and flag the rug/honeypot positions to exit.\n" +
-      "8) `scan_honeypot_batch` — one call to scan up to 10 mints (watchlist / launch candidates).\n" +
-      "9) `validate_mint` — free base58 address-format check; use it to avoid paying on a malformed mint.\n" +
+      "7) `check_exit_risk` — 'can I get out, and at what cost?' Crosses Birdeye smart-money flow (whale net " +
+      "buy/sell, bundler/sniper manipulation tags, 1h sell-pressure, holder count) with a live Jupiter exit-" +
+      "slippage ladder ($1k/$10k) → LOW/ELEVATED/HIGH exit-risk. The sellability wedge: are whales dumping into a " +
+      "thin book that traps you?\n" +
+      "8) `scan_wallet_risk` — scan a wallet's holdings and flag the rug/honeypot positions to exit.\n" +
+      "9) `scan_honeypot_batch` — one call to scan up to 10 mints (watchlist / launch candidates).\n" +
+      "10) `validate_mint` — free base58 address-format check; use it to avoid paying on a malformed mint.\n" +
       "These are PRE-TRADE vetting calls (some run live Jupiter simulations, so expect a few hundred ms to ~2s; " +
       "cached calls are near-instant — see the X-Cache and Server-Timing headers). For trading, sniper, LP, yield " +
       "and MEV agents that can't trust raw on-chain volume numbers.",
@@ -264,6 +268,21 @@ server.registerTool(
   },
   ({ mint, usd }) =>
     call("GET", `/v1/solana/can-i-sell/${encodeURIComponent(mint)}${usd !== undefined ? `?usd=${usd}` : ""}`),
+);
+
+server.registerTool(
+  "check_exit_risk",
+  {
+    title: "Solana exit-risk: can I get out, and at what cost?",
+    description:
+      "Answer 'can I actually EXIT this Solana token right now, or am I trapped?' Crosses Birdeye smart-money " +
+      "signals — whale net buy/sell flow (24h), bundler/sniper manipulation tags, 1h sell-pressure and holder " +
+      "count — with a LIVE Jupiter exit-slippage ladder at $1k and $10k. Returns an exit_risk verdict " +
+      "(LOW/ELEVATED/HIGH): are the whales dumping into a thin book that traps you, or is the exit clean? The " +
+      "sellability wedge — for exit-planning and trading agents. Paid ($0.04).",
+    inputSchema: MINT_ARG,
+  },
+  ({ mint }) => call("GET", `/v1/solana/exit-risk/${encodeURIComponent(mint)}`),
 );
 
 server.registerTool(
