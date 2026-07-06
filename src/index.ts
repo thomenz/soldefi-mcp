@@ -125,7 +125,7 @@ async function call(method: string, path: string, body?: unknown): Promise<ToolR
 }
 
 const server = new McpServer(
-  { name: "soldefi-mcp", version: "0.2.0" },
+  { name: "soldefi-mcp", version: "0.2.1" },
   {
     instructions:
       "Solana DeFi Intelligence exposes paid tools that vet Solana tokens and liquidity " +
