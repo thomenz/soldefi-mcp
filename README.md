@@ -15,14 +15,15 @@ bridge; the intelligence runs server-side.
 
 | Tool | Price | What it does |
 |---|---|---|
-| `scan_honeypot` | $0.02 | Rug/honeypot scan of an SPL token by mint: mint/freeze authority renounced?, Token-2022 transfer tax, top-holder concentration, and a **live Jupiter buy→sell round trip** proving the token is actually sellable. Returns a 0–100 risk score + `AVOID`/`CAUTION`/`SAFE` verdict. |
+| `scan_honeypot` | $0.02 | Rug/honeypot scan of an SPL token by mint: mint/freeze authority renounced?, Token-2022 transfer tax, top-holder concentration, and a **live Jupiter buy→sell round trip** as a strong signal the token is sellable at scan time (catches most honeypots). Returns a 0–100 risk score + `AVOID`/`CAUTION`/`LOW RISK` verdict. |
 | `analyze_pools` | $0.04 | Deep liquidity-pool analysis across Raydium/Orca/Meteora/pumpswap: real fee APR, wash-trade risk, age, TVL, a token rug verdict, and a real Jupiter slippage ladder ($100/$1k/$10k). Recommends the best risk-adjusted pool. |
 | `top_pools` | $0.05 | The **real** best Solana DEX pools — wash-traded/fake-volume pools filtered out, the rest ranked by risk-adjusted fee yield, with an `excluded` list of what was dropped and why. |
 | `check_lp_status` | $0.02 | Liquidity durability / rug-pull exposure: pools (TVL, age, DEX), largest-pool depth, burned-supply share, and whether mint/freeze authority is still live. Returns a 0-100 liquidity-risk score + verdict (`DURABLE`/`SHAKY`/`FRAGILE`/`RUG-PRONE`). |
 | `check_deployer` | $0.03 | Deployer reputation: creator wallet address, creator's remaining holding %, wallet age, and token age. Verdict flags fresh wallets, heavy insider holding, and brand-new tokens. |
 | `can_i_sell` | $0.01 | Real-time sellability check at YOUR size: simulates exiting a specific USD amount of a Solana token via a live Jupiter buy→sell round trip and reports USDC recovered, real sell price impact, and tax/friction loss. |
 | `check_exit_risk` | $0.04 | **Can I get out, and at what cost?** Crosses Birdeye smart-money flow (whale net buy/sell 24h, bundler/sniper manipulation tags, 1h sell-pressure, holder count) with a **live Jupiter exit-slippage ladder** ($1k/$10k) → `LOW`/`ELEVATED`/`HIGH` exit-risk. The sellability wedge: are whales dumping into a thin book that traps you? |
-| `scan_wallet_risk` | $0.05 | Portfolio rug scan: reads a wallet's SPL holdings and runs the full honeypot/rug scan on each (up to 10 positions), returning per-token risk and which mints to exit. |
+| `full_scan` | $0.08 | **One-call full workup**: bundles honeypot + LP durability + deployer + exit-risk into a single verdict with an aggregated `overall` {riskScore, riskLevel, verdict, topFlags} — cheaper than buying the four separately (~$0.11). |
+| `scan_wallet_risk` | $0.08 | Portfolio rug scan: reads a wallet's SPL holdings and runs the full honeypot/rug scan on each (up to 10 positions), returning per-token risk and which mints to exit. |
 | `scan_honeypot_batch` | $0.10 | Batch rug/honeypot scan: submit up to 10 Solana token mints and get the full per-token honeypot verdict for each in one paid call (cheaper than scanning individually). |
 | `validate_mint` | free | Local base58 mint-address format check. No payment. |
 

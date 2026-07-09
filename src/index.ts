@@ -125,7 +125,7 @@ async function call(method: string, path: string, body?: unknown): Promise<ToolR
 }
 
 const server = new McpServer(
-  { name: "soldefi-mcp", version: "0.3.0" },
+  { name: "soldefi-mcp", version: "0.4.0" },
   {
     instructions:
       "Solana DeFi Intelligence exposes paid tools that vet Solana tokens and liquidity " +
@@ -133,9 +133,9 @@ const server = new McpServer(
       "a call is charged only on success; invalid input is rejected for free. Coverage:\n" +
       "1) `scan_honeypot` — rug/honeypot scan of any SPL token by mint: is the mint/freeze " +
       "authority renounced?, Token-2022 transfer tax, top-holder concentration, and a LIVE " +
-      "Jupiter buy->sell round trip proving the token is actually sellable (not a honeypot). " +
-      "Returns a 0-100 risk score, machine flags and an AVOID/CAUTION/SAFE verdict. Use before " +
-      "buying/sniping a token.\n" +
+      "Jupiter buy->sell round trip as a strong signal the token is sellable at scan time " +
+      "(catches most honeypots). Returns a 0-100 risk score, machine flags and an " +
+      "AVOID/CAUTION/LOW RISK verdict. Use before buying/sniping a token.\n" +
       "2) `analyze_pools` — deep liquidity-pool analysis for a token across Raydium/Orca/" +
       "Meteora/pumpswap: real fee APR (volume x fee / TVL), wash-trade risk, age, TVL, plus a " +
       "token rug verdict and a real Jupiter slippage ladder ($100/$1k/$10k) for true executable " +
@@ -155,7 +155,10 @@ const server = new McpServer(
       "thin book that traps you?\n" +
       "8) `scan_wallet_risk` — scan a wallet's holdings and flag the rug/honeypot positions to exit.\n" +
       "9) `scan_honeypot_batch` — one call to scan up to 10 mints (watchlist / launch candidates).\n" +
-      "10) `validate_mint` — free base58 address-format check; use it to avoid paying on a malformed mint.\n" +
+      "10) `full_scan` — one paid call bundling honeypot + LP durability + deployer + exit-risk into an " +
+      "aggregated overall verdict; cheaper than buying the four separately ($0.08). The whole picture " +
+      "before you buy or exit.\n" +
+      "11) `validate_mint` — free base58 address-format check; use it to avoid paying on a malformed mint.\n" +
       "These are PRE-TRADE vetting calls (some run live Jupiter simulations, so expect a few hundred ms to ~2s; " +
       "cached calls are near-instant — see the X-Cache and Server-Timing headers). For trading, sniper, LP, yield " +
       "and MEV agents that can't trust raw on-chain volume numbers.",
@@ -175,8 +178,8 @@ server.registerTool(
     description:
       "Rug & honeypot scan of a Solana SPL token by mint. On-chain: mint/freeze authority renounced?, " +
       "Token-2022 transfer tax, top-holder concentration, plus a live Jupiter buy->sell round trip proving " +
-      "the token is actually sellable (not a honeypot). Returns a 0-100 risk score, machine flags and an " +
-      "agent-readable verdict (AVOID/CAUTION/SAFE). Paid ($0.02).",
+      "the token is sellable at scan time (catches most honeypots). Returns a 0-100 risk score, machine " +
+      "flags and an agent-readable verdict (AVOID/CAUTION/LOW RISK). Paid ($0.02).",
     inputSchema: MINT_ARG,
   },
   ({ mint }) => call("GET", `/v1/solana/honeypot/${encodeURIComponent(mint)}`),
@@ -286,13 +289,27 @@ server.registerTool(
 );
 
 server.registerTool(
+  "full_scan",
+  {
+    title: "Full Solana token rug workup in one call",
+    description:
+      "One paid call that bundles the honeypot/sellability scan, liquidity-durability (LP) check, deployer " +
+      "reputation and live exit-risk (Birdeye smart-money x Jupiter exit-slippage) into a single verdict — " +
+      "cheaper than buying the four separately (~$0.11 -> $0.08). Returns each sub-report plus an aggregated " +
+      "`overall` {riskScore, riskLevel, verdict, topFlags}. The whole picture before you buy or exit. Paid ($0.08).",
+    inputSchema: MINT_ARG,
+  },
+  ({ mint }) => call("GET", `/v1/solana/full-scan/${encodeURIComponent(mint)}`),
+);
+
+server.registerTool(
   "scan_wallet_risk",
   {
     title: "Portfolio rug scan for a Solana wallet",
     description:
       "Read a Solana wallet's SPL holdings and run the full honeypot/rug scan on each (up to 10 positions). Returns " +
       "per-token risk plus a summary of how many holdings are critical/high/medium/low and which mints to exit. " +
-      "For portfolio-manager and risk agents auditing exposure. Paid ($0.05).",
+      "For portfolio-manager and risk agents auditing exposure. Paid ($0.08).",
     inputSchema: { address: z.string().describe("Solana wallet address (base58) to scan for risky holdings.") },
   },
   ({ address }) => call("POST", "/v1/solana/wallet-risk", { address }),
