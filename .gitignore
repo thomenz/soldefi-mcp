@@ -4,3 +4,7 @@ dist/
 .DS_Store
 .env
 .dev.vars
+
+# local MCP registry CLI binary — never commit
+mcp-publisher
+pub.tar.gz

@@ -125,7 +125,9 @@ async function call(method: string, path: string, body?: unknown): Promise<ToolR
 }
 
 const server = new McpServer(
-  { name: "soldefi-mcp", version: "0.4.0" },
+  // Keep in sync with package.json and server.json — this is the version the MCP client
+  // sees in the initialize handshake.
+  { name: "soldefi-mcp", version: "0.4.1" },
   {
     instructions:
       "Solana DeFi Intelligence exposes paid tools that vet Solana tokens and liquidity " +

@@ -6,15 +6,44 @@
     "url": "https://github.com/thomenz/soldefi-mcp",
     "source": "github"
   },
-  "version": "0.4.0",
+  "version": "0.4.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "soldefi-mcp",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "environmentVariables": [
+        {
+          "description": "base58 or JSON-array secret key of a DEDICATED Solana wallet holding USDC (pays per call). Configure this and/or EVM_PRIVATE_KEY; the x402 layer settles on whichever rail the 402 advertises. Paid tools return 402 without one; the free validate_mint tool still works.",
+          "format": "string",
+          "isSecret": true,
+          "name": "SOLANA_PRIVATE_KEY"
+        },
+        {
+          "description": "0x private key of a DEDICATED wallet holding USDC on Base (pays per call). Configure this and/or SOLANA_PRIVATE_KEY; the x402 layer settles on whichever rail the 402 advertises. Paid tools return 402 without one; the free validate_mint tool still works.",
+          "format": "string",
+          "isSecret": true,
+          "name": "EVM_PRIVATE_KEY"
+        },
+        {
+          "description": "Optional Solana RPC override used to build the payment (e.g. a Helius URL). Only read when SOLANA_PRIVATE_KEY is set.",
+          "format": "string",
+          "name": "SOLANA_RPC_URL"
+        },
+        {
+          "description": "Base URL of a soldefi Worker. Defaults to the hosted production API (https://soldefi.thomenz.me).",
+          "format": "string",
+          "name": "SOLDEFI_BASE_URL"
+        },
+        {
+          "description": "Set to 'base-sepolia' to pay on testnet, which switches BOTH rails (Solana devnet + Base Sepolia). Any other value, including unset, pays on mainnet.",
+          "format": "string",
+          "name": "X402_NETWORK"
+        }
+      ]
     }
   ]
 }
